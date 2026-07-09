@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#dcdcdc">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="日記">
+<meta name="mobile-web-app-capable" content="yes">
+<title>日記</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<style>
+  :root{
+    --bg:#dcdcdc;
+    --paper:#f7f8f6;
+    --ink:#262a33;
+    --ink-soft:#5b5f66;
+    --ink-faint:#a6abb3;
+    --line:rgba(0,0,0,.12);
+    --badge-bg:#111;
+    --badge-bg2:#050505;
+    --badge-text:#f6f1e7;
+    --badge-accent:#cda35c;
+    --tabs-bg:rgba(0,0,0,.06);
+    --tab-active-bg:#f7f8f6;
+    --tab-active-text:#262a33;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Hiragino Sans","Yu Gothic UI","Yu Gothic",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{transition:background .6s ease,color .4s ease}
+  button,textarea{font:inherit}
+  #app{max-width:720px;height:100dvh;margin:0 auto;padding:env(safe-area-inset-top) 20px env(safe-area-inset-bottom);display:flex;flex-direction:column}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 2px 6px;gap:12px;flex-shrink:0}
+  .tabs{display:flex;gap:4px;background:var(--tabs-bg);border-radius:999px;padding:3px}
+  .tab{border:0;background:transparent;color:var(--ink-soft);padding:7px 16px;border-radius:999px;cursor:pointer;font-size:13.5px;font-weight:600;-webkit-tap-highlight-color:transparent}
+  .tab.active{background:var(--tab-active-bg);color:var(--tab-active-text);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .install{border:1px solid var(--line);background:rgba(255,255,255,.28);color:var(--ink);border-radius:999px;padding:7px 12px;font-size:13px;cursor:pointer}
+  .install.hidden{display:none}
+  .view{flex:1;min-height:0;display:flex;flex-direction:column}
+  .hidden{display:none!important}
+  .editor-head{display:flex;align-items:center;gap:14px;padding:0 0 14px;flex-shrink:0}
+  .badge-col{display:flex;flex-direction:column;align-items:center;gap:7px}
+  .time-left{font-size:16px;font-weight:700;color:var(--ink-soft);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .stamp{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--badge-bg),var(--badge-bg2));border-radius:18px;border:1px solid rgba(255,255,255,.07);box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 8px 18px rgba(0,0,0,.28);flex-shrink:0}
+  .stamp.lg{width:64px;height:72px}
+  .stamp.sm{width:46px;height:52px;border-radius:14px}
+  .stamp .y{color:var(--ink-faint);line-height:1;letter-spacing:.03em;font-size:9px;margin-bottom:3px}
+  .stamp.sm .y{font-size:7.5px;margin-bottom:2px}
+  .stamp .d{color:var(--badge-text);font-weight:800;line-height:1;white-space:nowrap;font-size:15px}
+  .stamp.sm .d{font-size:11.5px}
+  .stamp .w{color:var(--badge-accent);font-size:9px;letter-spacing:.06em;line-height:1;margin-top:4px}
+  .stamp.sm .w{font-size:7.5px;margin-top:2px}
+  .editor-wrap{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+  #editor{flex:1;width:100%;border:0;outline:0;resize:none;background:transparent;color:var(--ink);font-family:ui-sans-serif,system-ui,sans-serif;font-size:16.5px;line-height:1.95;letter-spacing:0;padding:4px 2px 8px}
+  #editor::placeholder{color:var(--ink-faint)}
+  #editor.disabled{opacity:.45;cursor:not-allowed}
+  #editor.view-only{caret-color:transparent;cursor:default}
+  .time-up-msg{font-size:12.5px;color:var(--ink-soft);padding:2px 2px 10px;line-height:1.7}
+  .save-indicator{font-size:12px;color:var(--ink-faint);opacity:0;transition:opacity .2s ease;min-height:22px;padding:0 2px 6px;text-align:right}
+  .save-indicator.show{opacity:1}
+  .list-head{display:flex;align-items:end;justify-content:space-between;padding:10px 2px 14px;gap:14px;border-bottom:1px solid var(--line);flex-shrink:0}
+  .list-title{font-size:20px;font-weight:700;letter-spacing:0}
+  .list-count{font-size:12px;color:var(--ink-soft);white-space:nowrap}
+  .list-scroll{overflow:auto;padding:8px 0 18px}
+  .entry-row{display:flex;align-items:center;gap:14px;padding:12px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+  .entry-text{min-width:0;flex:1}
+  .entry-preview{font-size:15px;line-height:1.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .entry-arrow{color:var(--ink-faint);font-size:20px}
+  .list-empty{color:var(--ink-soft);font-size:14px;line-height:1.9;padding:40px 4px;text-align:center}
+  @media (max-width:420px){
+    #app{padding-left:16px;padding-right:16px}
+    .tab{padding-left:13px;padding-right:13px}
+    .install{padding-left:10px;padding-right:10px}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <nav class="tabs" aria-label="表示切り替え">
+      <button class="tab active" id="tabToday" type="button">今日</button>
+      <button class="tab" id="tabList" type="button">振り返り</button>
+    </nav>
+    <button class="install hidden" id="installButton" type="button">インストール</button>
+  </header>
+
+  <main class="view" id="viewEditor">
+    <div class="editor-head">
+      <div class="badge-col">
+        <div class="stamp lg" aria-label="日付">
+          <div class="y" id="stampYear"></div>
+          <div class="d" id="stampDay"></div>
+          <div class="w" id="stampWeek"></div>
+        </div>
+      </div>
+      <div class="time-left" id="timeLeft"></div>
+    </div>
+    <div class="editor-wrap">
+      <textarea id="editor" placeholder="今日はどんな一日でしたか" aria-label="日記本文"></textarea>
+      <div class="time-up-msg hidden" id="timeUpMsg">今日の書く時間はここまでです。続きは明日また書けます。</div>
+      <div class="save-indicator" id="saveIndicator">保存しました</div>
+    </div>
+  </main>
+
+  <main class="view hidden" id="viewList">
+    <div class="list-head">
+      <div class="list-title">振り返り</div>
+      <div class="list-count" id="listCount"></div>
+    </div>
+    <div class="list-scroll" id="listScroll"></div>
+  </main>
+</div>
+
+<script>
+(() => {
+  const editor = document.getElementById("editor");
+  const viewEditor = document.getElementById("viewEditor");
+  const viewList = document.getElementById("viewList");
+  const tabToday = document.getElementById("tabToday");
+  const tabList = document.getElementById("tabList");
+  const stampYear = document.getElementById("stampYear");
+  const stampDay = document.getElementById("stampDay");
+  const stampWeek = document.getElementById("stampWeek");
+  const timeLeftEl = document.getElementById("timeLeft");
+  const timeUpMsg = document.getElementById("timeUpMsg");
+  const saveIndicator = document.getElementById("saveIndicator");
+  const listScroll = document.getElementById("listScroll");
+  const listCount = document.getElementById("listCount");
+  const installButton = document.getElementById("installButton");
+
+  const WRITE_LIMIT_MS = 15 * 60 * 1000;
+  const entryPrefix = "diary.entry.";
+  const usagePrefix = "diary.usage.";
+  let today = todayStr();
+  let currentDate = today;
+  let usageMs = 0;
+  let usageTimer = null;
+  let saveTimer = null;
+  let saveIndicatorTimer = null;
+  let isFocused = false;
+  let installPrompt = null;
+
+  function pad(n){ return String(n).padStart(2, "0"); }
+  function todayStr(){
+    const d = new Date();
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+  function parseKeyDate(dateStr){
+    const [y, m, d] = dateStr.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+  function badgeDate(dateStr){
+    const d = parseKeyDate(dateStr);
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+  }
+  function badgeYear(dateStr){ return String(parseKeyDate(dateStr).getFullYear()); }
+  function weekdayJP(dateStr){ return ["日","月","火","水","木","金","土"][parseKeyDate(dateStr).getDay()]; }
+  function formatRemain(ms){
+    const totalSec = Math.max(0, Math.ceil(ms / 1000));
+    return `${Math.floor(totalSec / 60)}:${pad(totalSec % 60)}`;
+  }
+  function storageKey(dateStr){ return `${entryPrefix}${dateStr}`; }
+  function usageKey(dateStr){ return `${usagePrefix}${dateStr}`; }
+  function loadUsage(dateStr){ return Number(localStorage.getItem(usageKey(dateStr)) || 0); }
+  function saveUsage(dateStr, ms){ localStorage.setItem(usageKey(dateStr), String(ms)); }
+  function loadEntry(dateStr){
+    try{
+      const raw = localStorage.getItem(storageKey(dateStr));
+      return raw ? JSON.parse(raw).text || "" : "";
+    }catch{
+      return "";
+    }
+  }
+  function persistEntry(dateStr, text){
+    if(text.trim() === ""){
+      localStorage.removeItem(storageKey(dateStr));
+    }else{
+      localStorage.setItem(storageKey(dateStr), JSON.stringify({ text, updatedAt: Date.now() }));
+    }
+    flashSaved();
+  }
+  function flashSaved(){
+    saveIndicator.classList.add("show");
+    clearTimeout(saveIndicatorTimer);
+    saveIndicatorTimer = setTimeout(() => saveIndicator.classList.remove("show"), 1600);
+  }
+  function scheduleSave(){
+    clearTimeout(saveTimer);
+    const dateAtEdit = currentDate;
+    const textAtEdit = editor.value;
+    saveTimer = setTimeout(() => {
+      saveTimer = null;
+      persistEntry(dateAtEdit, textAtEdit);
+    }, 450);
+  }
+  function updateTimeUI(){
+    const remain = Math.max(0, WRITE_LIMIT_MS - usageMs);
+    timeLeftEl.textContent = `残り ${formatRemain(remain)}`;
+    const isUp = remain <= 0;
+    editor.readOnly = isUp;
+    editor.classList.toggle("disabled", isUp);
+    timeUpMsg.classList.toggle("hidden", !isUp);
+  }
+  function stopUsageTimer(){
+    if(usageTimer){
+      clearInterval(usageTimer);
+      usageTimer = null;
+    }
+  }
+  function startUsageTimerForToday(){
+    stopUsageTimer();
+    usageMs = loadUsage(today);
+    updateTimeUI();
+    if(usageMs >= WRITE_LIMIT_MS) return;
+    usageTimer = setInterval(() => {
+      const real = todayStr();
+      if(real !== today){
+        stopUsageTimer();
+        today = real;
+        openEditor(today);
+        return;
+      }
+      if(!isFocused) return;
+      usageMs = Math.min(WRITE_LIMIT_MS, usageMs + 1000);
+      updateTimeUI();
+      if(usageMs % 5000 === 0 || usageMs >= WRITE_LIMIT_MS) saveUsage(today, usageMs);
+      if(usageMs >= WRITE_LIMIT_MS) stopUsageTimer();
+    }, 1000);
+  }
+  function renderStamp(dateStr){
+    stampYear.textContent = badgeYear(dateStr);
+    stampDay.textContent = badgeDate(dateStr);
+    stampWeek.textContent = weekdayJP(dateStr);
+  }
+  function setActiveTab(which){
+    tabToday.classList.toggle("active", which === "today");
+    tabList.classList.toggle("active", which === "list");
+  }
+  function showView(name){
+    viewEditor.classList.toggle("hidden", name !== "editor");
+    viewList.classList.toggle("hidden", name !== "list");
+  }
+  function flushSave(){
+    if(saveTimer){
+      clearTimeout(saveTimer);
+      saveTimer = null;
+      persistEntry(currentDate, editor.value);
+    }
+  }
+  function openEditor(dateStr){
+    flushSave();
+    currentDate = dateStr;
+    renderStamp(dateStr);
+    editor.value = loadEntry(dateStr);
+    showView("editor");
+    setActiveTab(dateStr === today ? "today" : null);
+    if(dateStr === today){
+      timeLeftEl.classList.remove("hidden");
+      editor.classList.remove("view-only");
+      startUsageTimerForToday();
+      if(!editor.readOnly) setTimeout(() => editor.focus(), 50);
+    }else{
+      stopUsageTimer();
+      timeLeftEl.classList.add("hidden");
+      timeUpMsg.classList.add("hidden");
+      editor.readOnly = true;
+      editor.classList.remove("disabled");
+      editor.classList.add("view-only");
+    }
+  }
+  function allEntries(){
+    return Object.keys(localStorage)
+      .filter(key => key.startsWith(entryPrefix))
+      .map(key => {
+        try{
+          const date = key.slice(entryPrefix.length);
+          const parsed = JSON.parse(localStorage.getItem(key));
+          return { date, text: parsed.text || "" };
+        }catch{
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }
+  function openList(){
+    flushSave();
+    stopUsageTimer();
+    setActiveTab("list");
+    showView("list");
+    const entries = allEntries();
+    listCount.textContent = entries.length ? `${entries.length}件` : "";
+    if(entries.length === 0){
+      listScroll.innerHTML = '<div class="list-empty">まだ日記がありません。<br>「今日」から書き始められます。</div>';
+      return;
+    }
+    listScroll.innerHTML = "";
+    entries.forEach(entry => {
+      const row = document.createElement("div");
+      row.className = "entry-row";
+      const preview = entry.text.trim().split("\n")[0].slice(0, 40) || "本文なし";
+      row.innerHTML = `
+        <div class="stamp sm"><div class="y">${badgeYear(entry.date)}</div><div class="d">${badgeDate(entry.date)}</div><div class="w">${weekdayJP(entry.date)}</div></div>
+        <div class="entry-text"><div class="entry-preview"></div></div>
+        <div class="entry-arrow">›</div>
+      `;
+      row.querySelector(".entry-preview").textContent = preview;
+      row.addEventListener("click", () => openEditor(entry.date));
+      listScroll.appendChild(row);
+    });
+  }
+  function setupInstall(){
+    if("serviceWorker" in navigator){
+      navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+    }
+    window.addEventListener("beforeinstallprompt", event => {
+      event.preventDefault();
+      installPrompt = event;
+      installButton.classList.remove("hidden");
+    });
+    installButton.addEventListener("click", async () => {
+      if(!installPrompt) return;
+      installPrompt.prompt();
+      await installPrompt.userChoice;
+      installPrompt = null;
+      installButton.classList.add("hidden");
+    });
+  }
+
+  editor.addEventListener("input", scheduleSave);
+  editor.addEventListener("focus", () => { isFocused = true; });
+  editor.addEventListener("blur", () => { isFocused = false; });
+  window.addEventListener("beforeunload", () => {
+    flushSave();
+    if(currentDate === today) saveUsage(today, usageMs);
+  });
+  tabToday.addEventListener("click", () => openEditor(today));
+  tabList.addEventListener("click", openList);
+
+  setupInstall();
+  openEditor(today);
+})();
+</script>
+</body>
+</html>
